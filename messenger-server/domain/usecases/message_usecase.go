@@ -17,8 +17,8 @@ func NewMessageUseCase(messageRepo interfaces.MessageRepository, friendSvc inter
 	return &MessageUseCase{MessageRepo: messageRepo, FriendSvc: friendSvc}
 }
 
-func (uc *MessageUseCase) SendMessage(ctx context.Context, senderId, receiverId int, content, mediaUrl string) (entities.Message, error) {
-	isFriend, err := uc.FriendSvc.CheckFriendship(senderId, receiverId)
+func (uc *MessageUseCase) SendMessage(ctx context.Context, senderId, receiverId int64, content, mediaUrl string) (entities.Message, error) {
+	isFriend, err := uc.FriendSvc.CheckFriendship(ctx, senderId, receiverId)
 	if err != nil || !isFriend {
 		return entities.Message{}, errors.New("not friends")
 	}
@@ -37,8 +37,8 @@ func (uc *MessageUseCase) SendMessage(ctx context.Context, senderId, receiverId 
 	return msg, nil
 }
 
-func (uc *MessageUseCase) GetMessages(ctx context.Context, senderId, receiverId int) ([]entities.Message, error) {
-	isFriend, err := uc.FriendSvc.CheckFriendship(senderId, receiverId)
+func (uc *MessageUseCase) GetMessages(ctx context.Context, senderId, receiverId int64) ([]entities.Message, error) {
+	isFriend, err := uc.FriendSvc.CheckFriendship(ctx, senderId, receiverId)
 	if err != nil || !isFriend {
 		return nil, errors.New("not friends")
 	}

@@ -17,7 +17,6 @@ import (
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
-var clients = make(map[int]*websocket.Conn)
 
 type WebSocketHandler struct {
 	MessageUC  *usecases.MessageUseCase
@@ -29,43 +28,49 @@ func NewWebSocketHandler(messageUC *usecases.MessageUseCase, statusUC *usecases.
 	return &WebSocketHandler{MessageUC: messageUC, StatusUC: statusUC, Cloudinary: cloudinary}
 }
 
+type clients map[int64]*websocket.Conn
+
+var Clients = make(clients)
+
 func (h *WebSocketHandler) HandleWebSocket(c *gin.Context) {
-	userId := c.GetInt("userId")
+	userId := c.GetInt64("userId")
 	friendIdStr := c.Param("friendId")
-	friendId, _ := strconv.Atoi(friendIdStr)
+	friendId, err := strconv.ParseInt(friendIdStr, 10, 64)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
 	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Println("WebSocket upgrade error:", err)
+		log.Println(err)
 		return
 	}
-	clients[userId] = ws
+	Clients[userId] = ws
 	defer func() {
 		h.StatusUC.UpdateStatus(context.Background(), userId, "offline")
-		delete(clients, userId)
+		delete(Clients, userId)
 		ws.Close()
 	}()
 
-	// Cập nhật trạng thái online
 	if err := h.StatusUC.UpdateStatus(context.Background(), userId, "online"); err != nil {
-		log.Println("Update status error:", err)
+		log.Println(err)
 	}
 
-	// Gửi lịch sử tin nhắn
 	messages, err := h.MessageUC.GetMessages(context.Background(), userId, friendId)
 	if err != nil {
 		ws.WriteJSON(gin.H{"error": err.Error()})
 		return
 	}
-	ws.WriteJSON(messages)
+	if err := ws.WriteJSON(messages); err != nil {
+		log.Println(err)
+	}
 
-	// Gửi trạng thái của friend
 	friendStatus, err := h.StatusUC.GetStatus(context.Background(), userId, friendId)
 	if err == nil {
 		ws.WriteJSON(gin.H{"type": "status", "userId": friendId, "status": friendStatus.Status})
 	}
 
-	// Xử lý tin nhắn
 	for {
 		var msg struct {
 			Content  string `json:"content"`
@@ -73,17 +78,18 @@ func (h *WebSocketHandler) HandleWebSocket(c *gin.Context) {
 		}
 		err := ws.ReadJSON(&msg)
 		if err != nil {
-			log.Println("WebSocket read error:", err)
+			log.Println(err)
 			break
 		}
 
-		// Upload media
-		mediaURL := msg.MediaURL
-		if mediaURL != "" {
-			resp, err := h.Cloudinary.Upload.Upload(context.Background(), mediaURL, uploader.UploadParams{
-				PublicID: "message_" + time.Now().String(),
+		mediaURL := ""
+		if msg.MediaURL != "" {
+			resp, err := h.Cloudinary.Upload.Upload(context.Background(), msg.MediaURL, uploader.UploadParams{
+				PublicID: "message_" + strconv.FormatInt(time.Now().UnixNano(), 10),
 			})
-			if err == nil {
+			if err != nil {
+				log.Println(err)
+			} else {
 				mediaURL = resp.SecureURL
 			}
 		}
@@ -94,8 +100,14 @@ func (h *WebSocketHandler) HandleWebSocket(c *gin.Context) {
 			continue
 		}
 
-		if receiverConn, ok := clients[friendId]; ok {
-			receiverConn.WriteJSON(sentMsg)
+		if receiverConn, ok := Clients[friendId]; ok {
+			if err := receiverConn.WriteJSON(sentMsg); err != nil {
+				log.Println(err)
+			}
+		}
+
+		if err := ws.WriteJSON(sentMsg); err != nil {
+			log.Println(err)
 		}
 	}
 }

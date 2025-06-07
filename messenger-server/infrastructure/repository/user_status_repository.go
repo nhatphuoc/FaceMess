@@ -7,6 +7,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type UserStatusMongoRepository struct {
@@ -19,7 +20,7 @@ func NewUserStatusMongoRepository(client *mongo.Client) *UserStatusMongoReposito
 	}
 }
 
-func (r *UserStatusMongoRepository) UpdateStatus(ctx context.Context, userId int, status string) error {
+func (r *UserStatusMongoRepository) UpdateStatus(ctx context.Context, userId int64, status string) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -30,11 +31,11 @@ func (r *UserStatusMongoRepository) UpdateStatus(ctx context.Context, userId int
 			"lastUpdated": time.Now(),
 		},
 	}
-	_, err := r.Collection.UpdateOne(ctx, filter, update, &mongo.UpdateOptions{Upsert: true})
+	_, err := r.Collection.UpdateOne(ctx, filter, update, options.Update().SetUpsert(true))
 	return err
 }
 
-func (r *UserStatusMongoRepository) GetStatus(ctx context.Context, userId int) (entities.UserStatus, error) {
+func (r *UserStatusMongoRepository) GetStatus(ctx context.Context, userId int64) (entities.UserStatus, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 

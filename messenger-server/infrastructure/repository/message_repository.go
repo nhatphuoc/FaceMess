@@ -27,7 +27,7 @@ func (r *MessageMongoRepository) SaveMessage(ctx context.Context, msg entities.M
 	return err
 }
 
-func (r *MessageMongoRepository) GetMessages(ctx context.Context, senderId, receiverId int) ([]entities.Message, error) {
+func (r *MessageMongoRepository) GetMessages(ctx context.Context, senderId, receiverId int64) ([]entities.Message, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 

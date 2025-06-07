@@ -3,7 +3,7 @@ package usecases
 import (
 	"context"
 	"crypto/rand"
-	"encoding/base64"
+	"encoding/binary"
 	"messenger-server/domain/entities"
 	"messenger-server/domain/interfaces"
 	"time"
@@ -29,12 +29,12 @@ func (uc *AuthUseCase) AuthenticateWithGoogle(ctx context.Context, code string) 
 
 	user, err := uc.UserRepo.FindByGoogleID(ctx, oauthUser.GoogleID)
 	if err != nil {
-		// Tạo user mới
 		user = entities.User{
 			UserID:   randInt(),
 			Username: oauthUser.Username,
 			Email:    oauthUser.Email,
 			GoogleID: oauthUser.GoogleID,
+			Avatar:   oauthUser.Avatar,
 		}
 		user, err = uc.UserRepo.SaveUser(ctx, user)
 		if err != nil {
@@ -42,16 +42,25 @@ func (uc *AuthUseCase) AuthenticateWithGoogle(ctx context.Context, code string) 
 		}
 	}
 
-	// Tạo JWT
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"id":  user.UserID,
 		"exp": time.Now().Add(time.Hour * 24).Unix(),
 	})
-	return token.SignedString([]byte(uc.JWTSecret))
+	tokenString, err := token.SignedString([]byte(uc.JWTSecret))
+	if err != nil {
+		return "", err
+	}
+	return tokenString, nil
 }
 
-func randInt() int {
-	b := make([]byte, 4)
-	rand.Read(b)
-	return int(base64.StdEncoding.EncodeToString(b)[0:4])
+func randInt() int64 {
+	var n int64
+	err := binary.Read(rand.Reader, binary.BigEndian, &n)
+	if err != nil {
+		panic(err)
+	}
+	if n < 0 {
+		n = -n
+	}
+	return n
 }

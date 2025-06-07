@@ -27,6 +27,15 @@ func (r *UserMongoRepository) SaveUser(ctx context.Context, user entities.User) 
 	return user, err
 }
 
+func (r *UserMongoRepository) FindByEmail(ctx context.Context, email string) (entities.User, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var user entities.User
+	err := r.Collection.FindOne(ctx, bson.M{"email": email}).Decode(&user)
+	return user, err
+}
+
 func (r *UserMongoRepository) FindByGoogleID(ctx context.Context, googleId string) (entities.User, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()

@@ -14,9 +14,9 @@ type UserStatusMongoRepository struct {
 	Collection *mongo.Collection
 }
 
-func NewUserStatusMongoRepository(client *mongo.Client) *UserStatusMongoRepository {
+func NewUserStatusMongoRepository(db *mongo.Database) *UserStatusMongoRepository {
 	return &UserStatusMongoRepository{
-		Collection: client.Database("chat").Collection("user_status"),
+		Collection: db.Collection("user_status"),
 	}
 }
 

@@ -17,15 +17,21 @@ import (
 func main() {
 	env := config.LoadEnv()
 
-	mongoClient, err := database.ConnectMongoDB(env.MongoURL)
+	// Kết nối tới MongoDB và lấy cả client và database
+	mongoClient, db, err := database.ConnectMongoDB(env.MongoURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to MongoDB: %v", err)
 	}
-	defer mongoClient.Disconnect(context.Background())
+	defer func() {
+		if err := mongoClient.Disconnect(context.Background()); err != nil {
+			log.Printf("Error disconnecting from MongoDB: %v", err)
+		}
+	}()
 
-	userRepo := repository.NewUserMongoRepository(mongoClient)
-	messageRepo := repository.NewMessageMongoRepository(mongoClient)
-	userStatusRepo := repository.NewUserStatusMongoRepository(mongoClient)
+	// Khởi tạo repository với database
+	userRepo := repository.NewUserMongoRepository(db)
+	messageRepo := repository.NewMessageMongoRepository(db)
+	userStatusRepo := repository.NewUserStatusMongoRepository(db)
 
 	friendService := services.NewFriendService(env.FacebookServiceURL)
 	oauthService := services.NewOAuthService(env.GoogleClientID, env.GoogleClientSecret, env.GoogleRedirectURI)

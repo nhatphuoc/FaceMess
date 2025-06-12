@@ -13,9 +13,9 @@ type MessageMongoRepository struct {
 	Collection *mongo.Collection
 }
 
-func NewMessageMongoRepository(client *mongo.Client) *MessageMongoRepository {
+func NewMessageMongoRepository(db *mongo.Database) *MessageMongoRepository {
 	return &MessageMongoRepository{
-		Collection: client.Database("chat").Collection("messages"),
+		Collection: db.Collection("messages"),
 	}
 }
 

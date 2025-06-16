@@ -1,3 +1,4 @@
+// messenger-server/interfaces/http/handlers/auth.go
 package handlers
 
 import (

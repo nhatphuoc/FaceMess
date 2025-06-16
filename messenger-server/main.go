@@ -28,6 +28,8 @@ func main() {
 		}
 	}()
 
+	database.InitDB(db)
+
 	// Khởi tạo repository với database
 	userRepo := repository.NewUserMongoRepository(db)
 	messageRepo := repository.NewMessageMongoRepository(db)

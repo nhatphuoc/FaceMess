@@ -1,3 +1,4 @@
+// messenger-server/domain/interfaces/oauth_service.go
 package interfaces
 
 import (

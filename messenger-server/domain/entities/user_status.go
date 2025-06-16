@@ -1,3 +1,4 @@
+// messenger-server/domain/entities/user_status.go
 package entities
 
 import (

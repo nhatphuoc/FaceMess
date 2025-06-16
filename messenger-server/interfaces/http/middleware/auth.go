@@ -1,3 +1,4 @@
+// messenger-server/interfaces/http/middleware/auth.go
 package middleware
 
 import (

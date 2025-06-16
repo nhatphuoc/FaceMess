@@ -1,3 +1,4 @@
+// messenger-server/domain/entities/message.go
 package entities
 
 import (

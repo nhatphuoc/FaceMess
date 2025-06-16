@@ -1,9 +1,10 @@
+// frontend/app/chat/page.tsx
 'use client';
-
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { w3cwebsocket as W3CWebSocket } from 'websocket';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import ChatComponent from '@/components/ChatComponent';
+import ChatComponent from '@/components/ChatComponents';
 
 interface Message {
   senderId: string;
@@ -15,18 +16,22 @@ interface Message {
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [friendId, setFriendId] = useState('2'); // Giả định friendId
+  const [friendId, setFriendId] = useState('2'); // giả định friendId
   const socketRef = useRef<WebSocket | null>(null);
+  const router = useRouter();
+
   const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   useEffect(() => {
+    // Nếu chưa login thì chuyển về login
     if (!userId || !token) {
-      window.location.href = '/login';
+      router.push('/login');
       return;
     }
 
-    socketRef.current = new W3CWebSocket(`${process.env.MESSENGER_SERVER_URL.replace('http', 'ws')}/ws/${userId}/${friendId}`, token);
+    const wsUrl = `${process.env.NEXT_PUBLIC_MESSENGER_SERVER_URL!.replace('http', 'ws')}/ws/${userId}/${friendId}`;
+    socketRef.current = new W3CWebSocket(wsUrl, token);
 
     socketRef.current.onopen = () => {
       console.log('WebSocket Connected');
@@ -45,16 +50,23 @@ export default function Chat() {
       console.log('WebSocket Disconnected');
     };
 
-    fetch(`${process.env.MESSENGER_SERVER_URL}/messages?senderId=${userId}&receiverId=${friendId}`, {
+    // Fetch tin nhắn cũ
+    fetch(`${process.env.NEXT_PUBLIC_MESSENGER_SERVER_URL}/messages?senderId=${userId}&receiverId=${friendId}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((res) => res.json())
-      .then((data) => setMessages(data));
+      .then((res) => {
+        if (res.status === 401) {
+          router.push('/login'); // token hết hạn thì cũng đẩy về login
+        }
+        return res.json();
+      })
+      .then((data) => setMessages(data))
+      .catch(() => router.push('/login'));
 
     return () => {
       if (socketRef.current) socketRef.current.close();
     };
-  }, [userId, friendId, token]);
+  }, [userId, friendId, token, router]);
 
   const sendMessage = (content: string) => {
     if (content.trim() && socketRef.current && userId && token) {
@@ -68,7 +80,7 @@ export default function Chat() {
     }
   };
 
-  if (!userId || !token) return null;
+  if (!userId || !token) return null; // hoặc hiện loading tạm
 
   return (
     <div className="container-fluid">

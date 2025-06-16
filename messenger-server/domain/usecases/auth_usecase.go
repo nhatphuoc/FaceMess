@@ -1,15 +1,22 @@
+// messenger-server/domain/usecases/auth_usecase.go
 package usecases
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/binary"
 	"messenger-server/domain/entities"
 	"messenger-server/domain/interfaces"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
+
+type SignedDetails struct {
+	Username string
+	Email    string
+	GoogleID string
+	Avatar   string
+	jwt.RegisteredClaims
+}
 
 type AuthUseCase struct {
 	UserRepo     interfaces.UserRepository
@@ -30,7 +37,6 @@ func (uc *AuthUseCase) AuthenticateWithGoogle(ctx context.Context, code string) 
 	user, err := uc.UserRepo.FindByGoogleID(ctx, oauthUser.GoogleID)
 	if err != nil {
 		user = entities.User{
-			UserID:   randInt(),
 			Username: oauthUser.Username,
 			Email:    oauthUser.Email,
 			GoogleID: oauthUser.GoogleID,
@@ -42,25 +48,22 @@ func (uc *AuthUseCase) AuthenticateWithGoogle(ctx context.Context, code string) 
 		}
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":  user.UserID,
-		"exp": time.Now().Add(time.Hour * 24).Unix(),
-	})
+	claims := SignedDetails{
+		Username: oauthUser.Username,
+		Email:    oauthUser.Email,
+		GoogleID: oauthUser.GoogleID,
+		Avatar:   oauthUser.Avatar,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(uc.JWTSecret))
 	if err != nil {
 		return "", err
 	}
 	return tokenString, nil
-}
-
-func randInt() int64 {
-	var n int64
-	err := binary.Read(rand.Reader, binary.BigEndian, &n)
-	if err != nil {
-		panic(err)
-	}
-	if n < 0 {
-		n = -n
-	}
-	return n
 }

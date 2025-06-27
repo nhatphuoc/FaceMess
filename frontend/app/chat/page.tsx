@@ -7,8 +7,8 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import ChatComponent from '@/components/ChatComponents';
 
 interface Message {
-  senderId: string;
-  receiverId: string;
+  senderId: string; // Thay bằng email
+  receiverId: string; // Thay bằng email
   content: string;
   mediaUrl?: string;
 }
@@ -16,21 +16,24 @@ interface Message {
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [friendId, setFriendId] = useState('2'); // giả định friendId
-  const socketRef = useRef<WebSocket | null>(null);
+  const [friendEmail, setFriendEmail] = useState('friend2@example.com'); // Giả định email của bạn
+  const socketRef = useRef<W3CWebSocket | null>(null);
   const router = useRouter();
 
-  const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
+  const email = typeof window !== 'undefined' ? localStorage.getItem('email') : null;
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  console.log('Email:', email);
+  console.log('Token:', token);
+  console.log('--------------------------------');
 
   useEffect(() => {
     // Nếu chưa login thì chuyển về login
-    if (!userId || !token) {
+    if (!email || !token) {
       router.push('/login');
       return;
     }
 
-    const wsUrl = `${process.env.NEXT_PUBLIC_MESSENGER_SERVER_URL!.replace('http', 'ws')}/ws/${userId}/${friendId}`;
+    const wsUrl = `${process.env.NEXT_PUBLIC_MESSENGER_SERVER_URL!.replace('http', 'ws')}/ws/${email}/${friendEmail}`;
     socketRef.current = new W3CWebSocket(wsUrl, token);
 
     socketRef.current.onopen = () => {
@@ -51,7 +54,7 @@ export default function Chat() {
     };
 
     // Fetch tin nhắn cũ
-    fetch(`${process.env.NEXT_PUBLIC_MESSENGER_SERVER_URL}/messages?senderId=${userId}&receiverId=${friendId}`, {
+    fetch(`${process.env.NEXT_PUBLIC_MESSENGER_SERVER_URL}/messages?senderId=${email}&receiverId=${friendEmail}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => {
@@ -66,13 +69,13 @@ export default function Chat() {
     return () => {
       if (socketRef.current) socketRef.current.close();
     };
-  }, [userId, friendId, token, router]);
+  }, [email, friendEmail, token, router]);
 
   const sendMessage = (content: string) => {
-    if (content.trim() && socketRef.current && userId && token) {
+    if (content.trim() && socketRef.current && email && token) {
       const message: Message = {
-        senderId: userId,
-        receiverId: friendId,
+        senderId: email, // Sử dụng email thay vì userId
+        receiverId: friendEmail, // Sử dụng email thay vì friendId
         content,
         mediaUrl: '',
       };
@@ -80,7 +83,7 @@ export default function Chat() {
     }
   };
 
-  if (!userId || !token) return null; // hoặc hiện loading tạm
+  if (!email || !token) return null; // hoặc hiện loading tạm
 
   return (
     <div className="container-fluid">

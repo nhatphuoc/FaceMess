@@ -4,59 +4,37 @@ services:
       context: ./facebook-server
       dockerfile: Dockerfile
     ports:
-      - "${FACEBOOK_PORT:-3001}:3001"
+      - "5000:5000"
     env_file:
       - ./facebook-server/.env
-    # Xóa volumes để tránh ghi đè
-    depends_on:
-      - neon-proxy
-
-  messenger-server:
-    build:
-      context: ./messenger-server
-      dockerfile: Dockerfile
-    ports:
-      - "${MESSENGER_PORT:-8080}:8080"
-    env_file:
-      - ./messenger-server/.env
-    # Xóa volumes để tránh ghi đè
-    depends_on:
-      - mongodb
+    networks:
+      - app-network
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "3000:3000"
     env_file:
-      - ./frontend/.env.local
-    # Xóa volumes để tránh ghi đè
+      - ./frontend/.env
     depends_on:
       - facebook-server
-      - messenger-server
+    command: ["npm", "run", "start"]
+    networks:
+      - app-network
 
-  mongodb:
-    image: mongo:latest
+  messenger-server:
+    build:
+      context: ./messenger-server
+      dockerfile: Dockerfile
     ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-    # Thêm env_file nếu cần (tùy chọn)
-    # env_file:
-    #   - ./mongodb/.env
+      - "8080:8080"
+    env_file:
+      - ./messenger-server/.env
+    networks:
+      - app-network
 
-  neon-proxy:
-    image: postgres:15-alpine
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=facebook
-    volumes:
-      - neon_data:/var/lib/postgresql/data
-
-volumes:
-  mongodb_data:
-  neon_data:
+networks:
+  app-network:
+    driver: bridge

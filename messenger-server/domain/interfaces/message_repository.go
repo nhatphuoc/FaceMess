@@ -1,3 +1,4 @@
+// messenger-server/domain/interfaces/message_repository.go
 package interfaces
 
 import (

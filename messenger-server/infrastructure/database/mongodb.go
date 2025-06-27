@@ -13,7 +13,7 @@ import (
 // ConnectMongoDB kết nối tới MongoDB và trả về client, database
 func ConnectMongoDB(uri string) (*mongo.Client, *mongo.Database, error) {
 	// Tạo context với timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
 	// Kết nối tới MongoDB Atlas

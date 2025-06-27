@@ -15,6 +15,9 @@ func SetupRouter(authHandler *handlers.AuthHandler, wsHandler *handlers.WebSocke
 		api.GET("/auth/google", authHandler.GoogleLogin)
 		api.GET("/auth/callback/google", authHandler.GoogleCallback)
 		api.GET("/ws/:userId/:friendId", middleware.AuthMiddleware(jwtSecret), wsHandler.HandleWebSocket)
+		api.GET("/testMess", func(c *gin.Context) {
+			c.String(200, "messenger-server hello")
+		})
 	}
 	return r
 }

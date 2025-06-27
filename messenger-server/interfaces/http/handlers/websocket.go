@@ -1,3 +1,4 @@
+// messenger-server/interfaces/http/handlers/websocket.go
 package handlers
 
 import (

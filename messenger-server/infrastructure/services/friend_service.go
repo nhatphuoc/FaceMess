@@ -1,3 +1,4 @@
+// messenger-server/infrastructure/services/friend_service.go
 package services
 
 import (

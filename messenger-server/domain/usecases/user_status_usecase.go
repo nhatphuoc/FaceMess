@@ -1,3 +1,4 @@
+// messenger-server/domain/usecases/user_status_usecase.go
 package usecases
 
 import (

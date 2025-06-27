@@ -28,10 +28,10 @@ func NewAuthUseCase(userRepo interfaces.UserRepository, oauthService interfaces.
 	return &AuthUseCase{UserRepo: userRepo, OAuthService: oauthService, JWTSecret: jwtSecret}
 }
 
-func (uc *AuthUseCase) AuthenticateWithGoogle(ctx context.Context, code string) (string, error) {
+func (uc *AuthUseCase) AuthenticateWithGoogle(ctx context.Context, code string) (string, string, error) {
 	oauthUser, err := uc.OAuthService.GetGoogleUser(ctx, code)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	user, err := uc.UserRepo.FindByGoogleID(ctx, oauthUser.GoogleID)
@@ -44,7 +44,7 @@ func (uc *AuthUseCase) AuthenticateWithGoogle(ctx context.Context, code string) 
 		}
 		user, err = uc.UserRepo.SaveUser(ctx, user)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 	}
 
@@ -63,7 +63,7 @@ func (uc *AuthUseCase) AuthenticateWithGoogle(ctx context.Context, code string) 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(uc.JWTSecret))
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return tokenString, nil
+	return oauthUser.Email, tokenString, nil
 }

@@ -1,3 +1,4 @@
+// frontend/components/ChatComponent.tsx
 import React, { useState } from 'react';
 
 interface Message {

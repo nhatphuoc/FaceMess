@@ -1,3 +1,4 @@
+// messenger-server/domain/interfaces/user_status_repository.go
 package interfaces
 
 import (

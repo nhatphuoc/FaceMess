@@ -1,10 +1,10 @@
-// messenger-server/domain/usecases/auth_usecase.go
+// messenger-server/application/usecases/auth_usecase.go
 package usecases
 
 import (
 	"context"
 	"messenger-server/domain/entities"
-	"messenger-server/domain/interfaces"
+	"messenger-server/domain/repositories"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -19,12 +19,12 @@ type SignedDetails struct {
 }
 
 type AuthUseCase struct {
-	UserRepo     interfaces.UserRepository
-	OAuthService interfaces.OAuthService
+	UserRepo     repositories.UserRepository
+	OAuthService repositories.OAuthService
 	JWTSecret    string
 }
 
-func NewAuthUseCase(userRepo interfaces.UserRepository, oauthService interfaces.OAuthService, jwtSecret string) *AuthUseCase {
+func NewAuthUseCase(userRepo repositories.UserRepository, oauthService repositories.OAuthService, jwtSecret string) *AuthUseCase {
 	return &AuthUseCase{UserRepo: userRepo, OAuthService: oauthService, JWTSecret: jwtSecret}
 }
 

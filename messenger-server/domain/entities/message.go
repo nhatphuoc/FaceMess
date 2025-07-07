@@ -8,10 +8,14 @@ import (
 )
 
 type Message struct {
-	ID         primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	SenderID   int64              `bson:"senderId" json:"senderId"`
-	ReceiverID int64              `bson:"receiverId" json:"receiverId"`
-	Content    string             `bson:"content" json:"content"`
-	MediaURL   string             `bson:"mediaUrl,omitempty" json:"mediaUrl"`
-	CreatedAt  time.Time          `bson:"createdAt" json:"createdAt"`
+	ID            primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	SenderEmail   string             `bson:"senderEmail" json:"senderEmail"`
+	ReceiverEmail string             `bson:"receiverEmail" json:"receiverEmail"`
+	Content       string             `bson:"content" json:"content"`
+	Timestamp     time.Time          `json:"timestamp" bson:"timestamp"`
+}
+
+type Envelope struct {
+	Type string      `json:"type"`
+	Data interface{} `json:"data"`
 }

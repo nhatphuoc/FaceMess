@@ -28,14 +28,14 @@ func (r *MessageMongoRepository) SaveMessage(ctx context.Context, msg entities.M
 	return err
 }
 
-func (r *MessageMongoRepository) GetMessages(ctx context.Context, senderId, receiverId int64) ([]entities.Message, error) {
+func (r *MessageMongoRepository) GetMessages(ctx context.Context, senderEmail, receiverEmail string) ([]entities.Message, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	filter := bson.M{
 		"$or": []bson.M{
-			{"senderId": senderId, "receiverId": receiverId},
-			{"senderId": receiverId, "receiverId": senderId},
+			{"senderEmail": senderEmail, "receiverEmail": receiverEmail},
+			{"senderEmail": receiverEmail, "receiverEmail": senderEmail},
 		},
 	}
 	cursor, err := r.Collection.Find(ctx, filter)

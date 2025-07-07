@@ -1,5 +1,5 @@
 // messenger-server/domain/interfaces/message_repository.go
-package interfaces
+package repositories
 
 import (
 	"context"
@@ -8,5 +8,5 @@ import (
 
 type MessageRepository interface {
 	SaveMessage(ctx context.Context, msg entities.Message) error
-	GetMessages(ctx context.Context, senderId, receiverId int64) ([]entities.Message, error)
+	GetMessages(ctx context.Context, senderEmail string, receiverEmail string) ([]entities.Message, error)
 }

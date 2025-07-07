@@ -1,5 +1,5 @@
-// messenger-server/domain/interfaces/user_repository.go
-package interfaces
+// messenger-server/domain/repositories/user_repository.go
+package repositories
 
 import (
 	"context"

@@ -1,5 +1,5 @@
 // messenger-server/domain/interfaces/friend_service.go
-package interfaces
+package repositories
 
 import "context"
 

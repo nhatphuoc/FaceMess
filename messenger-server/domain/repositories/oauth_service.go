@@ -1,5 +1,5 @@
-// messenger-server/domain/interfaces/oauth_service.go
-package interfaces
+// messenger-server/domain/repositories/oauth_service.go
+package repositories
 
 import (
 	"context"

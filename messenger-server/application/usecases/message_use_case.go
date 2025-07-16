@@ -10,10 +10,14 @@ import (
 // MessageUseCase xử lý logic gửi tin nhắn
 type MessageUseCase struct {
 	MessageService interfaces.MessageInterface
+	FriendService  interfaces.FriendInterface
 }
 
-func NewMessageUseCase(service interfaces.MessageInterface) *MessageUseCase {
-	return &MessageUseCase{MessageService: service}
+func NewMessageUseCase(messageService interfaces.MessageInterface, friendService interfaces.FriendInterface) *MessageUseCase {
+	return &MessageUseCase{
+		MessageService: messageService,
+		FriendService:  friendService,
+	}
 }
 
 func (uc *MessageUseCase) SendMessage(ctx context.Context, senderEmail, receiverEmail, content string) (entities.Message, error) {
@@ -32,7 +36,7 @@ func (uc *MessageUseCase) SendMessage(ctx context.Context, senderEmail, receiver
 }
 
 func (uc *MessageUseCase) GetMessages(ctx context.Context, senderEmail, receiverEmail string) ([]entities.Message, error) {
-	// isFriend, err := uc.FriendSvc.CheckFriendship(ctx, senderEmail, receiverEmail)
+	// isFriend, err := uc.FriendService.CheckFriendship(ctx, senderEmail, receiverEmail)
 	// if err != nil || !isFriend {
 	// 	return nil, errors.New("not friends")
 	// }

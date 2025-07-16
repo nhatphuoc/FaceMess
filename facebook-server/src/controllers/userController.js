@@ -1,13 +1,38 @@
 // facebook-server/src/controllers/userController.js
 const User = require('../models/user');
+const { body, validationResult } = require('express-validator');
+
+exports.createUser = [
+  body('googleId').notEmpty().withMessage('Google ID is required'),
+  body('username').notEmpty().withMessage('Username is required'),
+  body('email').isEmail().withMessage('Valid email is required'),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+      const { googleId, username, email, avatar } = req.body;
+      // Kiểm tra xem người dùng đã tồn tại chưa
+      let user = await User.findByEmail(email);
+      if (user) {
+        return res.status(201).json(user); // Trả về thông tin người dùng hiện có
+      }
+      // Tạo người dùng mới
+      user = await User.create({ googleId, username, email, avatar });
+      res.status(201).json(user);
+    } catch (err) {
+      console.error('Create user error:', { message: err.message, stack: err.stack });
+      res.status(500).json({ error: `Failed to create user: ${err.message}` });
+    }
+  },
+];
+
 
 exports.getCurrentUser = async (req, res) => {
   try {
-    const userId = req.user.id;
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-    const user = await User.findById(userId);
+    const user = await User.findByEmail(req.user.email);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -37,7 +62,7 @@ exports.getProfile = async (req, res) => {
 
 exports.searchUsers = async (req, res) => {
   try {
-    const { query } = req.query; // Sửa lỗi: lấy query từ req.query
+    const { query } = req.query;
     if (!query) {
       return res.status(400).json({ error: 'Search query is required' });
     }
@@ -62,3 +87,5 @@ exports.getAllUsers = async (req, res) => {
     res.status(500).json({ error: `Failed to fetch users: ${err.message}` });
   }
 };
+
+module.exports = exports;

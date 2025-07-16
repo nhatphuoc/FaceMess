@@ -1,4 +1,3 @@
-// File: messenger-server/main.go
 package main
 
 import (
@@ -36,6 +35,7 @@ func main() {
 	// Khởi tạo repository với database
 	userRepo := repository.NewUserMongoRepository(db)
 	messageRepo := repository.NewMessageMongoRepository(db)
+	friendRepo := repository.NewFriendMongoRepository(db, env.FacebookServiceURL)
 
 	oauthService := services.NewOAuthService(env.GoogleClientID, env.GoogleClientSecret, env.GoogleRedirectURI)
 
@@ -47,14 +47,19 @@ func main() {
 	hub := websocket.NewHub()
 	go hub.Run()
 
+	// Khởi tạo use cases
 	authUC := usecases.NewAuthUseCase(userRepo, oauthService, env.JWTSecret)
 	messageService := service.NewMessageService(hub, messageRepo)
-	messageUC := usecases.NewMessageUseCase(messageService)
+	friendService := service.NewFriendService(friendRepo)
+	friendUC := usecases.NewFriendUseCase(friendService)
+	messageUC := usecases.NewMessageUseCase(messageService, friendService)
 
+	// Khởi tạo handlers
 	authHandler := handlers.NewAuthHandler(authUC, oauthService)
 	wsHandler := handlers.NewWebSocketHandler(messageUC, cld, hub)
 
-	router := http.SetupRouter(authHandler, wsHandler, env.JWTSecret)
+	// Khởi tạo router
+	router := http.SetupRouter(authHandler, wsHandler, friendUC, hub, env.JWTSecret)
 
 	if err := router.Run(":8080"); err != nil {
 		log.Fatalf("Server run error: %v", err)

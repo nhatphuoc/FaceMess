@@ -1,224 +1,257 @@
+// frontend/app/friends/page.tsx
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import FriendList from '@/components/FriendList';
-import { fetchFriends, fetchUserProfile, sendFriendRequest, fetchPendingRequests } from '@/lib/api';
-
-interface Friend {
-  id: string;
-  username: string;
-  avatar: string;
-  email: string;
-}
+import SearchBar from '@/components/SearchBar';
+import { fetchFriends, fetchPendingRequests, fetchSentRequests, sendFriendRequest, acceptFriendRequest, rejectFriendRequest } from '@/lib/api';
 
 interface User {
   id: string;
   username: string;
-  avatar: string;
   email: string;
+  avatar?: string;
+  isFriend?: boolean;
 }
 
 interface FriendRequest {
-  id: number;
-  sender_id: string;
-  sender_user_id: string;
-  receiver_id: string;
+  id: string;
   username: string;
-  avatar: string;
   email: string;
-  status: string;
+  avatar?: string;
+  createdAt: string;
 }
 
-export default function Friends() {
-  const [friends, setFriends] = useState<Friend[]>([]);
+export default function FriendsPage() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [showAllUsers, setShowAllUsers] = useState(false);
   const [sentRequests, setSentRequests] = useState<FriendRequest[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const router = useRouter();
   const email = typeof window !== 'undefined' ? localStorage.getItem('email') : null;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   useEffect(() => {
-    if (!token || !email) {
-      window.location.href = '/login';
+    if (!email || !token) {
+      router.push('/login');
       return;
     }
 
-    const loadData = async () => {
-      try {
-        console.log('Fetching data with token:', token);
-        const [friendsData, pendingRequestsData, userProfile] = await Promise.all([
-          fetchFriends(token),
-          fetchPendingRequests(token),
-          fetchUserProfile('me', token)
-        ]);
+    // Fetch all users with isFriend status
+    fetchFriends(token!)
+      .then((data) => {
+        setUsers(data);
+        setFilteredUsers(data);
+      })
+      .catch((error) => {
+        console.error('Error fetching users:', error);
+        if (error.message === 'Unauthorized') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('email');
+          router.push('/login');
+          toast.error('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
+        } else {
+          toast.error('Không thể tải danh sách người dùng');
+        }
+      });
 
-        console.log('Friends:', friendsData);
-        console.log('Pending requests:', pendingRequestsData);
-        console.log('User profile:', userProfile);
+    // Fetch pending requests
+    fetchPendingRequests(token!)
+      .then((data) => setPendingRequests(data))
+      .catch((error) => {
+        console.error('Error fetching pending requests:', error);
+        if (error.message === 'Unauthorized') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('email');
+          router.push('/login');
+          toast.error('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
+        } else {
+          toast.error('Không thể tải yêu cầu kết bạn đang chờ');
+        }
+      });
 
-        setFriends(friendsData);
-        setPendingRequests(pendingRequestsData);
+    // Fetch sent requests
+    fetchSentRequests(token!)
+      .then((data) => setSentRequests(data))
+      .catch((error) => {
+        console.error('Error fetching sent requests:', error);
+        if (error.message === 'Unauthorized') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('email');
+          router.push('/login');
+          toast.error('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
+        } else {
+          toast.error('Không thể tải yêu cầu kết bạn đã gửi');
+        }
+      });
+  }, [email, token, router]);
 
-        // Lấy danh sách yêu cầu đã gửi
-        const sentRequestsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/friend-requests/sent`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (!sentRequestsRes.ok) throw new Error('Failed to fetch sent requests');
-        const sentRequestsData = await sentRequestsRes.json();
-        console.log('Sent requests:', sentRequestsData); // Thêm log
-        setSentRequests(sentRequestsData);
-
-        // Lấy danh sách tất cả người dùng
-        const usersRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (!usersRes.ok) throw new Error('Failed to fetch all users');
-        const usersData = await usersRes.json();
-        console.log('All users:', usersData); // Thêm log
-        setAllUsers(usersData.filter((u: User) => u.email !== email)); // Loại trừ chính mình
-        setError(null);
-      } catch (err) {
-        setError(`Failed to load data: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    };
-
-    loadData();
-  }, [token, email]);
+  const handleSearch = (query: string) => {
+    if (!query) {
+      setFilteredUsers(users);
+      return;
+    }
+    const filtered = users.filter(
+      (user) =>
+        user.username.toLowerCase().includes(query.toLowerCase()) ||
+        user.email.toLowerCase().includes(query.toLowerCase())
+    );
+    setFilteredUsers(filtered);
+  };
 
   const handleAddFriend = async (friendEmail: string) => {
-    if (!token || !email) return;
+    if (!friendEmail || friendEmail === email) {
+      toast.error('Email không hợp lệ hoặc không thể thêm chính mình');
+      return;
+    }
     try {
-      await sendFriendRequest(friendEmail, token);
-      const sentRequestsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/friend-requests/sent`, {
-        headers: { Authorization: `Bearer ${token}` }
+      await sendFriendRequest(friendEmail, token!);
+      toast.success('Đã gửi yêu cầu kết bạn');
+      fetchFriends(token!).then((data) => {
+        setUsers(data);
+        setFilteredUsers(data);
       });
-      if (!sentRequestsRes.ok) throw new Error('Failed to fetch sent requests');
-      const sentRequestsData = await sentRequestsRes.json();
-      setSentRequests(sentRequestsData);
-      alert('Friend request sent!');
-    } catch (err) {
-      setError(`Failed to send friend request: ${err instanceof Error ? err.message : String(err)}`);
+      fetchSentRequests(token!).then(setSentRequests);
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+      if (typeof error === 'object' && error !== null && 'message' in error && (error as any).message === 'Unauthorized') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('email');
+        router.push('/login');
+        toast.error('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
+      } else {
+        toast.error('Không thể gửi yêu cầu kết bạn');
+      }
     }
   };
 
-  const handleAcceptRequest = async (requestId: number) => {
+  const handleAcceptRequest = async (senderEmail: string) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/friends/requests/${requestId}/accept`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ requestId })
+      await acceptFriendRequest(senderEmail, token!);
+      toast.success('Đã chấp nhận yêu cầu kết bạn');
+      setPendingRequests(pendingRequests.filter((req) => req.email !== senderEmail));
+      fetchFriends(token!).then((data) => {
+        setUsers(data);
+        setFilteredUsers(data);
       });
-      if (!res.ok) throw new Error('Failed to accept request');
-      if (!token) throw new Error('No token found');
-      const updatedFriends = await fetchFriends(token);
-      const updatedRequests = await fetchPendingRequests(token);
-      setFriends(updatedFriends);
-      setPendingRequests(updatedRequests);
-      alert('Friend request accepted!');
-    } catch (err) {
-      setError(`Failed to accept request: ${err instanceof Error ? err.message : String(err)}`);
+    } catch (error) {
+      console.error('Error accepting friend request:', error);
+      if (typeof error === 'object' && error !== null && 'message' in error && (error as any).message === 'Unauthorized') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('email');
+        router.push('/login');
+        toast.error('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
+      } else {
+        toast.error('Không thể chấp nhận yêu cầu kết bạn');
+      }
     }
   };
 
-  const handleRejectRequest = async (requestId: number) => {
+  const handleRejectRequest = async (senderEmail: string) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/friends/requests/${requestId}/reject`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ requestId })
-      });
-      if (!res.ok) throw new Error('Failed to reject request');
-      if (!token) throw new Error('No token found');
-      const updatedRequests = await fetchPendingRequests(token);
-      setPendingRequests(updatedRequests);
-      alert('Friend request rejected!');
-    } catch (err) {
-      setError(`Failed to reject request: ${err instanceof Error ? err.message : String(err)}`);
+      await rejectFriendRequest(senderEmail, token!);
+      toast.success('Đã từ chối yêu cầu kết bạn');
+      setPendingRequests(pendingRequests.filter((req) => req.email !== senderEmail));
+    } catch (error) {
+      console.error('Error rejecting friend request:', error);
+      if (typeof error === 'object' && error !== null && 'message' in error && (error as any).message === 'Unauthorized') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('email');
+        router.push('/login');
+        toast.error('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
+      } else {
+        toast.error('Không thể từ chối yêu cầu kết bạn');
+      }
     }
   };
 
-  const toggleAllUsers = async () => {
-    setShowAllUsers(!showAllUsers);
-  };
-
-  const getUserStatus = (user: User) => {
-    const sentRequest = sentRequests.find(req => req.receiver_id === user.id);
-    const receivedRequest = pendingRequests.find(req => req.sender_id === user.id);
-    if (friends.some(f => f.id === user.id)) return 'Bạn bè';
-    if (sentRequest && sentRequest.status === 'pending') return 'Đã gửi lời mời';
-    if (receivedRequest && receivedRequest.status === 'pending') return 'Đang đợi phản hồi';
-    if (sentRequest && sentRequest.status === 'rejected') return 'Đã từ chối';
-    return 'Gửi lời mời kết bạn';
-  };
-
-  console.log('Rendering pendingRequests:', pendingRequests); // Thêm log
-
-  if (!token || !email) return null;
+  if (!email || !token) return <div className="container text-center mt-5">Đang tải...</div>;
 
   return (
-    <div className="container my-4">
-      <h1 className="text-center mb-4">Friends</h1>
-      {error && <div className="alert alert-danger">{error}</div>}
-      
-      <h3>Incoming Friend Requests</h3>
-      {pendingRequests.length === 0 ? (
-        <p>No pending friend requests.</p>
-      ) : (
-        <ul className="list-group mb-4">
-          {pendingRequests.map(req => (
-            <li key={req.id} className="list-group-item d-flex justify-content-between align-items-center">
-              <div>
-                <img src={req.avatar} alt={req.username} className="rounded-circle me-2" width="30" />
-                {req.username} ({req.email})
-              </div>
-              <div>
-                <button
-                  className="btn btn-success btn-sm me-2"
-                  onClick={() => handleAcceptRequest(req.id)}
-                >
-                  Accept
-                </button>
-                <button
-                  className="btn btn-danger btn-sm"
-                  onClick={() => handleRejectRequest(req.id)}
-                >
-                  Reject
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <button className="btn btn-primary mb-4" onClick={toggleAllUsers}>
-        {showAllUsers ? 'Hide All Users' : 'Add Friend'}
-      </button>
-
-      {showAllUsers && (
-        <div className="my-4">
-          <h3>All Users</h3>
-          <ul className="list-group">
-            {allUsers.map(user => (
-              <li key={user.id} className="list-group-item d-flex justify-content-between align-items-center">
-                <div>
-                  <img src={user.avatar} alt={user.username} className="rounded-circle me-2" width="30" />
-                  {user.username} ({user.email})
-                </div>
-                <button
-                  className={`btn btn-sm ${getUserStatus(user) === 'Bạn bè' ? 'btn-secondary' : 'btn-primary'}`}
-                  onClick={() => getUserStatus(user) === 'Gửi lời mời kết bạn' && handleAddFriend(user.email)}
-                  disabled={getUserStatus(user) !== 'Gửi lời mời kết bạn'}
-                >
-                  {getUserStatus(user)}
-                </button>
-              </li>
-            ))}
-          </ul>
+    <div className="container">
+      <ToastContainer />
+      <nav className="navbar navbar-expand-lg navbar-light bg-light mb-4">
+        <div className="container-fluid">
+          <a className="navbar-brand" href="/chat">Messenger</a>
+          <div className="navbar-nav">
+            <a className="nav-link" href="/chat">Chat</a>
+            <a className="nav-link active" href="/friends">Bạn bè</a>
+            <a className="nav-link" href={`/profile/${email}`}>Hồ sơ</a>
+            <button
+              className="btn btn-outline-danger"
+              onClick={() => {
+                localStorage.removeItem('token');
+                localStorage.removeItem('email');
+                router.push('/login');
+              }}
+            >
+              Đăng xuất
+            </button>
+          </div>
         </div>
-      )}
-
-      <FriendList friends={friends} onAddFriend={handleAddFriend} />
+      </nav>
+      <h1 className="text-center my-4">Danh sách người dùng</h1>
+      <SearchBar onSearch={handleSearch} />
+      <div className="row">
+        <div className="col-md-6">
+          <FriendList friends={filteredUsers} onAddFriend={handleAddFriend} />
+        </div>
+        <div className="col-md-6">
+          <div className="card mb-4">
+            <div className="card-body">
+              <h4 className="card-title">Yêu cầu kết bạn đang chờ</h4>
+              <ul className="list-group list-group-flush">
+                {pendingRequests.length === 0 && <li className="list-group-item">Không có yêu cầu nào</li>}
+                {pendingRequests.map((req) => (
+                  <li key={req.email} className="list-group-item d-flex align-items-center">
+                    <img
+                      src={req.avatar || '/default-avatar.png'}
+                      alt={req.username || req.email}
+                      className="rounded-circle me-2"
+                      width="30"
+                    />
+                    {req.username || req.email}
+                    <button
+                      className="btn btn-sm btn-success ms-auto me-2"
+                      onClick={() => handleAcceptRequest(req.email)}
+                    >
+                      Chấp nhận
+                    </button>
+                    <button
+                      className="btn btn-sm btn-danger"
+                      onClick={() => handleRejectRequest(req.email)}
+                    >
+                      Từ chối
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <div className="card">
+            <div className="card-body">
+              <h4 className="card-title">Yêu cầu kết bạn đã gửi</h4>
+              <ul className="list-group list-group-flush">
+                {sentRequests.length === 0 && <li className="list-group-item">Không có yêu cầu nào</li>}
+                {sentRequests.map((req) => (
+                  <li key={req.email} className="list-group-item d-flex align-items-center">
+                    <img
+                      src={req.avatar || '/default-avatar.png'}
+                      alt={req.username || req.email}
+                      className="rounded-circle me-2"
+                      width="30"
+                    />
+                    {req.username || req.email}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

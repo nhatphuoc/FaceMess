@@ -44,7 +44,7 @@ func ValidateJWT(tokenStr string, jwtSecret string) (string, error) {
 		return "", errors.New("invalid claims")
 	}
 
-	email, ok := claims["Email"].(string)
+	email, ok := claims["email"].(string)
 	if !ok {
 		return "", errors.New("email claim not found")
 	}

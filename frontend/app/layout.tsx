@@ -22,6 +22,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Link from 'next/link';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -40,7 +41,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="navbar-nav">
               <Link href="/friends" className="nav-link">Friends</Link>
               <Link href="/posts" className="nav-link">Posts</Link>
-              <Link href="/testMess" className="nav-link">Messenger</Link>
+              <Link href="/chat" className="nav-link">Messenger</Link>
+              <Link href="/testMess" className="nav-link">Test</Link>
               <Link href="/login" className="nav-link">Logout</Link>
             </div>
           </div>

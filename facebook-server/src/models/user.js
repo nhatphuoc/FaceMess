@@ -10,8 +10,8 @@ class User {
         FROM users
         WHERE id = ${id}
       `;
-      console.log('Found user by id:', result[0]);
-      return result[0];
+      console.log('Found user by id:', result[0] || null);
+      return result[0] || null;
     } catch (err) {
       console.error('Find by id error:', { message: err.message, stack: err.stack, id });
       throw new Error(`Failed to find user by id: ${err.message}`);
@@ -26,10 +26,11 @@ class User {
         FROM users
         WHERE google_id = ${googleId}
       `;
-      return result[0];
+      console.log('Found user by google_id:', result[0] || null);
+      return result[0] || null;
     } catch (err) {
-      console.error('Find by google id error:', { message: err.message, stack: err.stack, googleId });
-      throw new Error(`Failed to find user by google id: ${err.message}`);
+      console.error('Find by google_id error:', { message: err.message, stack: err.stack, googleId });
+      throw new Error(`Failed to find user by google_id: ${err.message}`);
     }
   }
 
@@ -41,7 +42,8 @@ class User {
         FROM users
         WHERE email = ${email}
       `;
-      return result[0];
+      console.log('Found user by email:', email, result[0] || null);
+      return result[0] || null;
     } catch (err) {
       console.error('Find by email error:', { message: err.message, stack: err.stack, email });
       throw new Error(`Failed to find user by email: ${err.message}`);
@@ -55,11 +57,12 @@ class User {
     try {
       const result = await sql`
         INSERT INTO users (google_id, username, email, avatar)
-        VALUES (${googleId}, ${username}, ${email}, ${avatar})
+        VALUES (${googleId}, ${username}, ${email}, ${avatar || null})
         ON CONFLICT (google_id) DO UPDATE
         SET username = EXCLUDED.username, email = EXCLUDED.email, avatar = EXCLUDED.avatar
         RETURNING id, google_id, username, email, avatar
       `;
+      console.log('Created user:', result[0]);
       return result[0];
     } catch (err) {
       console.error('Create user error:', { message: err.message, stack: err.stack, googleId, email });
@@ -70,6 +73,7 @@ class User {
   static async findByTextSearchQuery(query, params) {
     try {
       const result = await sql.unsafe(query, params);
+      console.log('Search users result:', result);
       return result;
     } catch (err) {
       console.error('Search users error:', { message: err.message, stack: err.stack, query, params });
@@ -84,6 +88,7 @@ class User {
         FROM users
         ORDER BY username ASC
       `;
+      console.log('Found all users:', result);
       return result;
     } catch (err) {
       console.error('Get all users error:', { message: err.message, stack: err.stack });

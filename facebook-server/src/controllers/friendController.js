@@ -1,17 +1,15 @@
 // facebook-server/src/controllers/friendController.js
 const Friend = require('../models/friend');
-const FriendRequest = require('../models/friendRequest');
 const User = require('../models/user');
-const sql = require('../config/db');
 
 exports.sendFriendRequest = async (req, res) => {
   try {
     const { friendEmail } = req.body;
-    const senderId = req.user.id;
+    const senderEmail = req.user.email;
     if (!friendEmail) {
       return res.status(400).json({ error: 'Friend email is required' });
     }
-    if (friendEmail === req.user.email) {
+    if (friendEmail === senderEmail) {
       return res.status(400).json({ error: 'Cannot send friend request to yourself' });
     }
 
@@ -20,23 +18,21 @@ exports.sendFriendRequest = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Kiểm tra xem đã gửi hoặc nhận yêu cầu chưa
-    const existingSent = await FriendRequest.findPending(friend.id);
-    if (existingSent.some(req => req.sender_id === senderId)) {
+    // Check if already friends or request exists
+    const friends = await Friend.findFriends(senderEmail);
+    if (friends.some((f) => f.email === friendEmail)) {
+      return res.status(400).json({ error: 'You are already friends' });
+    }
+    const pendingRequests = await Friend.getPendingRequests(friendEmail);
+    if (pendingRequests.some((req) => req.email === senderEmail)) {
       return res.status(400).json({ error: 'Friend request already sent' });
     }
-    const existingReceived = await FriendRequest.findPending(senderId);
-    if (existingReceived.some(req => req.sender_id === friend.id)) {
+    const receivedRequests = await Friend.getPendingRequests(senderEmail);
+    if (receivedRequests.some((req) => req.email === friendEmail)) {
       return res.status(400).json({ error: 'You have a pending request from this user' });
     }
 
-    // Kiểm tra xem đã là bạn bè chưa
-    const friends = await Friend.findFriends(senderId);
-    if (friends.some(f => f.id === friend.id)) {
-      return res.status(400).json({ error: 'You are already friends' });
-    }
-
-    const request = await FriendRequest.create(senderId, friend.id);
+    const request = await Friend.create(senderEmail, friendEmail);
     res.status(201).json({ success: 'Friend request sent', request });
   } catch (err) {
     console.error('Send friend request error:', { message: err.message, stack: err.stack });
@@ -46,19 +42,19 @@ exports.sendFriendRequest = async (req, res) => {
 
 exports.acceptFriendRequest = async (req, res) => {
   try {
-    const { requestId } = req.body;
-    if (!requestId) {
-      return res.status(400).json({ error: 'Request ID is required' });
+    const { senderEmail } = req.body;
+    const receiverEmail = req.user.email;
+    if (!senderEmail) {
+      return res.status(400).json({ error: 'Sender email is required' });
     }
 
-    const request = await FriendRequest.findPending(req.user.id);
-    const targetRequest = request.find(r => r.id === parseInt(requestId));
+    const pendingRequests = await Friend.getPendingRequests(receiverEmail);
+    const targetRequest = pendingRequests.find((r) => r.email === senderEmail);
     if (!targetRequest) {
       return res.status(404).json({ error: 'Friend request not found or not pending' });
     }
 
-    await FriendRequest.updateStatus(requestId, 'accepted');
-    await Friend.create(req.user.id, targetRequest.sender_id);
+    await Friend.updateStatus(senderEmail, receiverEmail, 'accepted');
     res.json({ success: 'Friend request accepted' });
   } catch (err) {
     console.error('Accept friend request error:', { message: err.message, stack: err.stack });
@@ -68,17 +64,18 @@ exports.acceptFriendRequest = async (req, res) => {
 
 exports.rejectFriendRequest = async (req, res) => {
   try {
-    const { requestId } = req.body;
-    if (!requestId) {
-      return res.status(400).json({ error: 'Request ID is required' });
+    const { senderEmail } = req.body;
+    const receiverEmail = req.user.email;
+    if (!senderEmail) {
+      return res.status(400).json({ error: 'Sender email is required' });
     }
 
-    const request = await FriendRequest.findPending(req.user.id);
-    if (!request.find(r => r.id === parseInt(requestId))) {
+    const pendingRequests = await Friend.getPendingRequests(receiverEmail);
+    if (!pendingRequests.find((r) => r.email === senderEmail)) {
       return res.status(404).json({ error: 'Friend request not found or not pending' });
     }
 
-    await FriendRequest.updateStatus(requestId, 'rejected');
+    await Friend.updateStatus(senderEmail, receiverEmail, 'rejected');
     res.json({ success: 'Friend request rejected' });
   } catch (err) {
     console.error('Reject friend request error:', { message: err.message, stack: err.stack });
@@ -88,7 +85,7 @@ exports.rejectFriendRequest = async (req, res) => {
 
 exports.getFriends = async (req, res) => {
   try {
-    const friends = await Friend.findFriends(req.user.id);
+    const friends = await Friend.findFriends(req.user.email);
     res.json(friends);
   } catch (err) {
     console.error('Get friends error:', { message: err.message, stack: err.stack });
@@ -98,8 +95,7 @@ exports.getFriends = async (req, res) => {
 
 exports.getPendingRequests = async (req, res) => {
   try {
-    console.log('User ID:', req.user.id); // Thêm log
-    const requests = await FriendRequest.findPending(req.user.id);
+    const requests = await Friend.getPendingRequests(req.user.email);
     res.json(requests);
   } catch (err) {
     console.error('Get pending requests error:', { message: err.message, stack: err.stack });
@@ -109,17 +105,12 @@ exports.getPendingRequests = async (req, res) => {
 
 exports.getSentRequests = async (req, res) => {
   try {
-    const result = await sql`
-      SELECT fr.id, fr.sender_id, fr.receiver_id, fr.status, fr.created_at, fr.updated_at, u.id AS receiver_user_id, u.username, u.avatar, u.email
-      FROM friend_requests fr
-      JOIN users u ON fr.receiver_id = u.id
-      WHERE fr.sender_id = ${req.user.id}
-      ORDER BY fr.created_at DESC
-    `;
-    console.log('Found sent friend requests:', result);
-    res.json(result);
+    const requests = await Friend.getSentRequests(req.user.email);
+    res.json(requests);
   } catch (err) {
     console.error('Get sent requests error:', { message: err.message, stack: err.stack });
     res.status(500).json({ error: `Failed to fetch sent requests: ${err.message}` });
   }
 };
+
+module.exports = exports;

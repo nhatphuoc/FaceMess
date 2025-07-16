@@ -8,5 +8,5 @@ router.get('/me', authMiddleware, userController.getCurrentUser);
 router.get('/', authMiddleware, userController.getAllUsers);
 router.get('/:id', authMiddleware, userController.getProfile);
 router.get('/search', authMiddleware, userController.searchUsers);
-
+router.post('/', userController.createUser);
 module.exports = router;

@@ -10,3 +10,8 @@ type User struct {
 	GoogleID string             `bson:"googleId" json:"googleId"`
 	Avatar   string             `bson:"avatar,omitempty" json:"avatar,omitempty"`
 }
+
+type UserResponse struct {
+	User
+	IsFriend bool `json:"isFriend"`
+}

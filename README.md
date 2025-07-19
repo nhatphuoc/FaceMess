@@ -62,6 +62,49 @@ graph TB
   - `lib`: Contains utility functions.
 - **Role**: Serves as the primary user interaction point, communicating with backend servers via HTTP API and WebSocket.
 
+``` mermaid
+graph TB
+    subgraph "Next.js Frontend"
+        subgraph "Pages"
+            LOGIN["🔑 Login Page"]
+            PROFILE["👤 Profile Page"]
+            FRIENDS["👥 Friends Page"]
+            POSTS["📝 Posts Page"]
+            CHAT["💬 Chat Page"]
+        end
+        
+        subgraph "Components"
+            CC["💬 ChatComponent.tsx"]
+            FL["👥 FriendList.tsx"]
+            PC["📝 PostCard.tsx"]
+            NAV["🧭 Navigation.tsx"]
+        end
+        
+        subgraph "Libraries"
+            UTILS["🛠️ Utility Functions"]
+            API["🌐 API Clients"]
+            HOOKS["🎣 Custom Hooks"]
+        end
+        
+        subgraph "Styling"
+            TW["🎨 Tailwind CSS"]
+            COMP["🧩 UI Components"]
+        end
+    end
+    
+    LOGIN --> CC
+    FRIENDS --> FL
+    POSTS --> PC
+    CHAT --> CC
+    
+    CC --> API
+    FL --> API
+    PC --> API
+    
+    API --> UTILS
+    HOOKS --> UTILS
+```
+
 ### 2. Facebook Server
 - **Technologies**: Node.js, Express, OAuth, JWT, Neon PostgreSQL
 - **Description**: Manages friend connections and post operations (CRUD).
@@ -73,7 +116,54 @@ graph TB
   - `middleware`: Manages common functionalities like authentication (e.g., `auth.js`).
 - **Database**: Neon PostgreSQL.
 - **Role**: Processes requests from the Frontend related to friends and posts.
-
+``` mermaid
+graph TB
+    subgraph "Facebook Server - Node.js"
+        subgraph "Controllers"
+            AC["🔐 authController.js"]
+            FC["👥 friendController.js"]
+            PC["📝 postController.js"]
+        end
+        
+        subgraph "Models"
+            UM["👤 User Model"]
+            FM["👥 Friend Model"]
+            PM["📝 Post Model"]
+        end
+        
+        subgraph "Routes"
+            AR["🛣️ authRoute.js"]
+            FR["🛣️ friendRoute.js"]
+            PR["🛣️ postRoute.js"]
+        end
+        
+        subgraph "Middleware"
+            AUTH["🔒 auth.js"]
+            CORS["🌐 CORS"]
+            VALID["✅ Validation"]
+        end
+        
+        subgraph "Database"
+            NEON["🐘 Neon PostgreSQL"]
+        end
+    end
+    
+    AR --> AC
+    FR --> FC
+    PR --> PC
+    
+    AC --> UM
+    FC --> FM
+    PC --> PM
+    
+    UM --> NEON
+    FM --> NEON
+    PM --> NEON
+    
+    AUTH --> AC
+    AUTH --> FC
+    AUTH --> PC
+```
 ### 3. Messenger Server
 - **Technologies**: Go, Gin, Gorilla WebSocket, OAuth 2.0, JWT, Atlas MongoDB
 - **Description**: Handles real-time messaging.
@@ -87,15 +177,106 @@ graph TB
 - **Database**: Atlas MongoDB.
 - **Role**: Facilitates real-time communication via WebSocket and provides HTTP APIs for chat initialization.
 
+``` mermaid
+graph TB
+    subgraph "Messenger Server - Go"
+        subgraph "Presentation Layer"
+            WS["🔌 WebSocket Handler"]
+            HTTP["🌐 HTTP Handlers"]
+            AUTH_H["🔐 Auth Handler"]
+        end
+        
+        subgraph "Application Layer"
+            MS_SVC["💬 Message Service"]
+            FI["👥 Friend Interface"]
+            WS_SVC["🔌 WebSocket Service"]
+        end
+        
+        subgraph "Use Cases"
+            AU["🔐 Auth UseCase"]
+            MU["💬 Message UseCase"]
+            FU["👥 Friend UseCase"]
+        end
+        
+        subgraph "Domain Layer"
+            ME["💬 Message Entity"]
+            UE["👤 User Entity"]
+            CE["💬 Chat Entity"]
+        end
+        
+        subgraph "Infrastructure Layer"
+            MR["💾 Message Repository"]
+            MONGO["🍃 Atlas MongoDB"]
+            JWT["🎫 JWT Service"]
+        end
+    end
+    
+    WS --> WS_SVC
+    HTTP --> MS_SVC
+    AUTH_H --> AU
+    
+    MS_SVC --> MU
+    WS_SVC --> MU
+    FI --> FU
+    
+    AU --> UE
+    MU --> ME
+    FU --> UE
+    
+    MU --> MR
+    AU --> JWT
+    MR --> MONGO
+```
 ### 4. Containerization
 - **Technologies**: Docker
 - **Description**: The entire system is containerized for easy deployment and management.
 - **Configuration**: Uses `docker-compose.yml` to orchestrate containers.
 
-### 5. Component Relationships
+### 5. Data Flow Architecture
 - **Frontend ↔ Facebook Server**: Communicates via HTTP API for friend and post-related functionalities.
 - **Frontend ↔ Messenger Server**: Communicates via HTTP API for chat initialization and WebSocket for sending/receiving messages in real-time.
 - **Facebook Server ↔ Messenger Server**: Shares necessary data via HTTP API.
+
+``` mermaid
+graph LR
+    subgraph "User Actions"
+        LOGIN["🔑 Login"]
+        POST["📝 Create Post"]
+        FRIEND["👥 Add Friend"]
+        MSG["💬 Send Message"]
+    end
+    
+    subgraph "Frontend Processing"
+        STATE["📊 State Management"]
+        API_CLIENT["🌐 API Client"]
+        WS_CLIENT["🔌 WebSocket Client"]
+    end
+    
+    subgraph "Backend Services"
+        FB_API["📘 Facebook API"]
+        MSG_API["💬 Messenger API"]
+        WS_SERVER["🔌 WebSocket Server"]
+    end
+    
+    subgraph "Data Storage"
+        PG_DATA["🐘 User/Friend/Post Data"]
+        MONGO_DATA["🍃 Message Data"]
+    end
+    
+    LOGIN --> STATE
+    POST --> API_CLIENT
+    FRIEND --> API_CLIENT
+    MSG --> WS_CLIENT
+    
+    STATE --> FB_API
+    API_CLIENT --> FB_API
+    API_CLIENT --> MSG_API
+    WS_CLIENT --> WS_SERVER
+    
+    FB_API --> PG_DATA
+    MSG_API --> MONGO_DATA
+    WS_SERVER --> MONGO_DATA
+```
 
 ### 6. Security
 - Both servers (Facebook Server and Messenger Server) utilize OAuth and JWT for user authentication and authorization.
@@ -105,7 +286,7 @@ graph TB
 - Docker Compose is used to manage and deploy services.
 - Concurrently can be used to run the system.
 
-## Technology Summary
+## Technology Summary 
 | Component          | Technologies Used                                      |
 |--------------------|-------------------------------------------------------|
 | Frontend           | Next.js, TypeScript, Tailwind CSS, React              |
@@ -171,3 +352,7 @@ Follow these steps to set up and run the project:
 2. Configure the `.env` files with the appropriate values.
 3. Use `docker-compose up --build` to start the containers, or run each server individually with `npm start` (or equivalent) and concurrently if needed.
 
+### Some Screen
+![Chat](image/chat.png)
+
+![Friend](image/friend.png)

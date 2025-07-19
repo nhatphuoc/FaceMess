@@ -28,12 +28,12 @@ class Friend {
     if (!userEmail) throw new Error('User email is required');
     try {
       const result = await sql`
-        SELECT u.id, u.username, u.email, u.avatar
+        SELECT u.id, u.username, u.email, u.avatar, u.google_id
         FROM friends f
         JOIN users u ON f.receiver_email = u.email
         WHERE f.sender_email = ${userEmail} AND f.status = 'accepted'
         UNION
-        SELECT u.id, u.username, u.email, u.avatar
+        SELECT u.id, u.username, u.email, u.avatar, u.google_id
         FROM friends f
         JOIN users u ON f.sender_email = u.email
         WHERE f.receiver_email = ${userEmail} AND f.status = 'accepted'

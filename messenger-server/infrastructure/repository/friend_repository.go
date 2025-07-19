@@ -45,33 +45,41 @@ func (r *FriendMongoRepository) GetFriends(ctx context.Context, userEmail string
 
 	// Lấy danh sách bạn bè từ facebook-server (/api/friends)
 	url := fmt.Sprintf("%s/api/friends", r.baseURL)
+
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
+		fmt.Printf("err1: failed to create request: %v\n", err)
 		return nil, fmt.Errorf("failed to create request: %v", err)
 	}
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 
 	resp, err := r.client.Do(req)
 	if err != nil {
+		fmt.Printf("err2: failed to fetch friends: %v\n", err)
 		return nil, fmt.Errorf("failed to fetch friends: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
+		fmt.Printf("err3: non-200 status from fb-server: %d - %s\n", resp.StatusCode, string(body))
 		return nil, fmt.Errorf("failed to fetch friends: %d - %s", resp.StatusCode, string(body))
 	}
 
-	var friends []entities.User
+	var friends []entities.UserFB
 	if err := json.NewDecoder(resp.Body).Decode(&friends); err != nil {
+		fmt.Printf("err4: failed to decode friends response: %v\n", err)
 		return nil, fmt.Errorf("failed to decode friends response: %v", err)
 	}
+
+	fmt.Printf("fb-server friends: %+v\n", friends)
 
 	// Tạo map email của bạn bè để kiểm tra nhanh
 	friendEmails := make(map[string]bool)
 	for _, friend := range friends {
 		friendEmails[friend.Email] = true
 	}
+	fmt.Printf("Friend emails: %+v\n", friendEmails)
 
 	// Lấy tất cả người dùng từ MongoDB (trừ người dùng hiện tại)
 	filter := bson.M{"email": bson.M{"$ne": userEmail}}

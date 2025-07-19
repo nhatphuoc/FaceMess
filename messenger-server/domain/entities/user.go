@@ -10,7 +10,12 @@ type User struct {
 	GoogleID string             `bson:"googleId" json:"googleId"`
 	Avatar   string             `bson:"avatar,omitempty" json:"avatar,omitempty"`
 }
-
+type UserFB struct {
+	Username string `bson:"username" json:"username"`
+	Email    string `bson:"email" json:"email"`
+	GoogleID string `bson:"googleId" json:"google_id"`
+	Avatar   string `bson:"avatar,omitempty" json:"avatar,omitempty"`
+}
 type UserResponse struct {
 	User
 	IsFriend bool `json:"isFriend"`

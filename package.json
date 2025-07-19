@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "concurrently \"npm:frontend\" \"npm:facebook\" \"npm:messenger\"",
+    "start": "concurrently \"npm:frontend\" \"npm:facebook\" \"npm:messenger\"",
     "dev2": "concurrently \"npm:frontend\" \"npm:messenger\"",
-    "frontend": "cd frontend && npm install && npm start",
-    "facebook": "cd facebook-server && npm install && npx app.js",
+    "frontend": "cd frontend && npm install && npm run dev",
+    "facebook": "cd facebook-server && npm install && npm run dev",
     "messenger": "cd messenger-server && go mod tidy && go run main.go"
   },
   "devDependencies": {
